@@ -1,18 +1,24 @@
-use std::thread;
-use std::time::Duration;
+// hey, look! compact imports!
+use std::{ffi::c_void, mem::transmute, ptr::null};
 
-fn wait() {
-    let ten_millis = Duration::from_millis(10);
-    thread::sleep(ten_millis);
+type HModule = *const c_void;
+type FarProc = *const c_void;
+extern "stdcall" {
+    fn LoadLibraryA(name: *const u8) -> HModule;
+    fn GetProcAddress(module: HModule, name: *const u8) -> FarProc;
 }
 
+// This one is just for readability
+type MessageBoxA = extern "stdcall" fn(*const c_void, *const u8, *const u8, u32);
+
 fn main() {
-    println!("Hello, world!");
-    let x = 5;
-    let y = 10;
-    let z = x + y;
-    println!("The value of z is: {}", z);
-    wait();
-    let s = String::from("hello");
-    println!("{}", s);
+    unsafe {
+        let h = LoadLibraryA("USER32.dll\0".as_ptr());
+
+        let MessageBoxA: MessageBoxA = transmute(GetProcAddress(h, "MessageBoxA\0".as_ptr()));
+        // no, you're not having a stroke - yes, you can have a local variable and a
+        // type with the same name in scope at the same time!
+
+        MessageBoxA(null(), "Hello from Rust\0".as_ptr(), null(), 0);
+    }
 }
